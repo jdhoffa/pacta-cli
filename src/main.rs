@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .as_str(),
             "ghcr.io/rmi-pacta/workflow.transition.monitor:latest",
             "/bound/bin/run-r-scripts",
-            //format!("/bound/bin/run-r-scripts {}", args.portfolio_name).as_str(),
+            args.portfolio_name.as_str(),
         ])
         .status()?;
 
