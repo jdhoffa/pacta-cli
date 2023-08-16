@@ -1,20 +1,32 @@
-#![allow(unused)]
-
 use clap::Parser;
+use reqwest::IntoUrl; // Import IntoUrl trait
 use reqwest::Url;
+use std::error::Error;
 use std::process::Command;
 use tokio::fs::File;
-use tokio::io::AsyncWriteExt; // Import AsyncWriteExt trait
+use tokio::io::AsyncWriteExt;
 
-/// Search for a pattern in a file and display the lines that contain it.
-#[derive(Parser)]
+/// Command-line arguments struct
+#[derive(Parser, Debug)]
 struct Cli {
-    /// The portfolio to run
     portfolio_name: String,
-    /// The path to the file to read
     data_path: std::path::PathBuf,
-    // The path to the working directory
     working_dir: std::path::PathBuf,
+}
+
+/// Download an image tarball and save it to a file
+async fn download_image(image_url: impl IntoUrl) -> Result<Vec<u8>, Box<dyn Error>> {
+    let response = reqwest::get(image_url).await?;
+    let image_data = response.bytes().await?;
+    Ok(image_data.to_vec())
+}
+
+/// Load a Docker image from a tarball
+fn load_docker_image(image_path: &str) -> Result<(), Box<dyn Error>> {
+    Command::new("docker")
+        .args(&["load", "-i", image_path])
+        .status()?;
+    Ok(())
 }
 
 #[tokio::main]
@@ -24,19 +36,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Define the image URL
     let image_url = Url::parse("https://ghcr.io/rmi-pacta/workflow.transition.monitor:latest")?;
 
-    // Download the image tarball
-    let response = reqwest::get(image_url).await?;
-    let image_data = response.bytes().await?;
+    let image_data = download_image(image_url).await?;
 
     // Create or open the file
     let mut image_file = File::create("image.tar").await?;
-
     image_file.write_all(&image_data).await?;
 
-    // Pull the Docker image from the downloaded tarball
-    Command::new("docker")
-        .args(&["load", "-i", "image.tar"])
-        .status()?;
+    load_docker_image("image.tar")?;
 
     // Run a Docker container to display ASCII art
     Command::new("docker")
@@ -63,4 +69,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .status()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_download_image() {
+        let image_url =
+            Url::parse("https://github.com/github/hello-docker/pkgs/container/hello-docker")
+                .unwrap();
+        let image_data = download_image(image_url).await.unwrap();
+        assert!(!image_data.is_empty());
+    }
+
+    #[test]
+    fn test_load_docker_image() {
+        // TODO: Add your test for load_docker_image here
+    }
 }
