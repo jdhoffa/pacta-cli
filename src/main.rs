@@ -1,11 +1,10 @@
 use clap::Parser;
-use reqwest::IntoUrl; // Import IntoUrl trait
+use reqwest::IntoUrl;
 use reqwest::Url;
 use std::error::Error;
+use std::io::Write;
 use std::process::Command;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-
+use tempfile::NamedTempFile;
 /// Command-line arguments struct
 #[derive(Parser, Debug)]
 struct Cli {
@@ -38,11 +37,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let image_data = download_image(image_url).await?;
 
-    // Create or open the file
-    let mut image_file = File::create("image.tar").await?;
-    image_file.write_all(&image_data).await?;
+    // Create a temporary file to store the image tarball
+    let mut image_temp_file = NamedTempFile::new()?;
 
-    load_docker_image("image.tar")?;
+    // Write the image data to the temporary file
+    image_temp_file.write_all(&image_data)?;
+
+    // Load the Docker image from the tarball
+    let image_path = image_temp_file.path().to_str().unwrap();
+    load_docker_image(image_path)?;
 
     // Run a Docker container to display ASCII art
     Command::new("docker")
