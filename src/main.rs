@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse the command line arguments
     let args = Cli::parse();
     // Define the image URL
-    let image_url = Url::parse("https://ghcr.io/rmi-pacta/workflow.transition.monitor:latest")?;
+    let image_url = Url::parse("https://ghcr.io/rmi-pacta/workflow.pacta:latest")?;
 
     let image_data = download_image(image_url).await?;
 
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--rm",
             "--mount",
             format!(
-                "type=bind,source={},target=/bound/working_dir",
+                "type=bind,source={},target=/workflow.pacta/working_dir",
                 args.working_dir.display()
             )
             .as_str(),
@@ -65,8 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 args.data_path.display()
             )
             .as_str(),
-            "ghcr.io/rmi-pacta/workflow.transition.monitor:latest",
-            "/bound/bin/run-r-scripts",
+            "ghcr.io/rmi-pacta/workflow.pacta:latest",
+            "/run-pacta.sh",
             args.portfolio_name.as_str(),
         ])
         .status()?;
